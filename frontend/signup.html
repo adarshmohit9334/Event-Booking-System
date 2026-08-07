@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up — Eventify Portal</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <!-- Google Fonts: Inter & Outfit -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --accent-magenta: #db2777;
+      --accent-purple: #c084fc;
+      --text-primary: #ffffff;
+      --text-secondary: #a1a1aa;
+      --border-color: rgba(255, 255, 255, 0.15);
+      --input-bg: rgba(10, 15, 30, 0.6);
+      --card-bg: rgba(15, 23, 42, 0.55);
+    }
+
+    body {
+      background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=1600');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* Top Navbar */
+    .top-nav {
+      padding: 1.5rem 2rem;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+    }
+
+    .brand-logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #93c5fd;
+      text-decoration: none;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .nav-btn-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-btn-link:hover {
+      color: #ffffff;
+    }
+
+    .nav-btn-outline {
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 6px;
+      padding: 0.4rem 1rem;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .nav-btn-outline:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      border-color: #ffffff;
+    }
+
+    /* Main Area */
+    .main-content {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.5rem;
+    }
+
+    .signup-container {
+      max-width: 460px;
+      width: 100%;
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(25px) saturate(180%);
+      -webkit-backdrop-filter: blur(25px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px 0 rgba(0, 0, 0, 0.6);
+      border-radius: 20px;
+      padding: 3rem 2.5rem;
+    }
+
+    .form-control-custom {
+      background-color: var(--input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+    }
+
+    .form-control-custom:focus {
+      background-color: rgba(10, 15, 30, 0.8);
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.25);
+      color: var(--text-primary);
+    }
+
+    .btn-signup {
+      background: linear-gradient(90deg, #c084fc, #db2777);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.8rem;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      box-shadow: 0 4px 15px rgba(219, 39, 119, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .btn-signup:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(219, 39, 119, 0.45);
+      filter: brightness(1.05);
+    }
+
+    /* Footer */
+    .bottom-footer {
+      padding: 1.5rem 2rem;
+      background: rgba(0, 0, 0, 0.8);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.8rem;
+      color: #71717a;
+    }
+
+    .footer-link {
+      color: #71717a;
+      text-decoration: none;
+      margin-left: 1.2rem;
+      transition: color 0.2s;
+    }
+
+    .footer-link:hover {
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <nav class="top-nav d-flex justify-content-between align-items-center">
+    <a class="brand-logo d-flex align-items-center gap-2" href="#">
+      <i class="fa-solid fa-calendar-days text-primary"></i> Eventify
+    </a>
+    <div class="d-flex align-items-center gap-3">
+      <a href="login.html" class="nav-btn-link">Sign In</a>
+      <a href="signup.html" class="nav-btn-outline">Create Account</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div class="signup-container">
+      <div class="glass-card">
+        
+        <!-- Thumbnail visualizer -->
+        <div class="text-center mb-3">
+          <div class="d-inline-block rounded overflow-hidden" style="width: 58px; height: 38px; border: 1px solid rgba(255,255,255,0.25);">
+            <img src="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=100" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+        </div>
+
+        <h3 class="text-white fw-bold text-center mb-1" style="letter-spacing: -0.02em;">Create Account</h3>
+        <p class="text-secondary text-center small mb-4" style="color: var(--text-secondary) !important;">Register to book live event tickets and get access immediately</p>
+
+        <form onsubmit="handleSignup(event)">
+          <!-- Name -->
+          <div class="mb-3">
+            <label class="form-label text-white small fw-semibold">Full Name</label>
+            <input type="text" required id="name" class="form-control form-control-custom" placeholder="John Doe">
+          </div>
+
+          <!-- Email Address -->
+          <div class="mb-3">
+            <label class="form-label text-white small fw-semibold">Email Address</label>
+            <input type="email" required id="email" class="form-control form-control-custom" placeholder="name@example.com">
+          </div>
+
+          <!-- Role Selector -->
+          <div class="mb-3">
+            <label class="form-label text-white small fw-semibold">Register As</label>
+            <select id="role" class="form-select form-control-custom" style="background-image: url(&quot;data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e&quot;);">
+              <option value="customer">Customer</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-3">
+            <label class="form-label text-white small fw-semibold">Password</label>
+            <div class="position-relative">
+              <input type="password" required id="password" class="form-control form-control-custom w-100" placeholder="••••••••">
+              <i class="fa-regular fa-eye position-absolute text-secondary" id="togglePasswordIcon1" style="right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer;" onclick="togglePasswordVisibility('password', 'togglePasswordIcon1')"></i>
+            </div>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="mb-4">
+            <label class="form-label text-white small fw-semibold">Confirm Password</label>
+            <div class="position-relative">
+              <input type="password" required id="confirmPassword" class="form-control form-control-custom w-100" placeholder="••••••••">
+              <i class="fa-regular fa-eye position-absolute text-secondary" id="togglePasswordIcon2" style="right: 1rem; top: 50%; transform: translateY(-50%); cursor: pointer;" onclick="togglePasswordVisibility('confirmPassword', 'togglePasswordIcon2')"></i>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="btn btn-signup w-100 mb-3">Sign Up</button>
+
+          <div class="text-center mt-3">
+            <span class="text-secondary small" style="color: var(--text-secondary) !important;">Already have an account? <a href="login.html" style="color: #60a5fa; text-decoration: none; font-weight: 600;">Sign In</a></span>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Footer -->
+  <footer class="bottom-footer d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+    <div>
+      <span class="text-white fw-bold">Eventify</span>
+    </div>
+    <div>
+      <span>© 2024 Eventify Event Management. All rights reserved.</span>
+    </div>
+    <div class="d-flex flex-wrap justify-content-center">
+      <a href="#" class="footer-link">Privacy Policy</a>
+      <a href="#" class="footer-link">Terms of Service</a>
+      <a href="#" class="footer-link">Help Center</a>
+      <a href="#" class="footer-link">Contact Us</a>
+    </div>
+  </footer>
+
+  <script>
+    function handleSignup(event) {
+      event.preventDefault();
+      
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.toLowerCase().trim();
+      const role = document.getElementById('role').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (password !== confirmPassword) {
+        alert("Error: Passwords do not match.");
+        return;
+      }
+
+      // Check if email already exists in system database
+      const DEFAULT_USERS = [
+        { email: 'admin@eventify.com', role: 'admin', name: 'Administrator' },
+        { email: 'john.doe@gmail.com', role: 'customer', name: 'John Doe' },
+        { email: 'sarah.s@yahoo.com', role: 'customer', name: 'Sarah Smith' }
+      ];
+
+      let users = JSON.parse(localStorage.getItem('etbs_users')) || DEFAULT_USERS;
+      users = users.filter(u => u.role !== 'organizer');
+      const exists = users.some(u => u.email === email);
+
+      if (exists) {
+        alert("Error: This email address is already in use by another account.");
+        return;
+      }
+
+      // Register new user
+      users.push({ email, role, name });
+      localStorage.setItem('etbs_users', JSON.stringify(users));
+
+      alert("Registration Successful! You can now log in.");
+      window.location.href = 'login.html';
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const passwordInput = document.getElementById(inputId);
+      const toggleIcon = document.getElementById(iconId);
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-regular', 'fa-eye');
+        toggleIcon.classList.add('fa-solid', 'fa-eye-slash');
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-solid', 'fa-eye-slash');
+        toggleIcon.classList.add('fa-regular', 'fa-eye');
+      }
+    }
+  </script>
+</body>
+</html>
