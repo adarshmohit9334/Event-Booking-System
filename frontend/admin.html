@@ -230,7 +230,7 @@
         <div class="col-md-3">
           <div class="glass-card text-start">
             <span class="text-secondary text-uppercase fw-semibold fs-7">Total Revenue</span>
-            <h2 class="text-white mt-2">$240,850</h2>
+            <h2 class="text-white mt-2">₹2,40,850</h2>
             <small class="text-success"><i class="fa-solid fa-arrow-trend-up"></i> +12% this month</small>
           </div>
         </div>
@@ -375,7 +375,7 @@
                 <td>John Doe</td>
                 <td>Neon Horizon DJ Festival</td>
                 <td>A4, A5</td>
-                <td>$150.00</td>
+                <td>₹150.00</td>
                 <td>2026-08-05</td>
                 <td><span class="status-badge badge-approved">Completed</span></td>
               </tr>
@@ -487,7 +487,7 @@
 
       // Seed default refunds
       const DEFAULT_REFUNDS = [
-        { id: '#RFD-203', bookingId: '#BKG-9842', reason: 'Medical emergency', amount: '$75.00', date: '2026-08-06', status: 'pending' }
+        { id: '#RFD-203', bookingId: '#BKG-9842', reason: 'Medical emergency', amount: '₹75.00', date: '2026-08-06', status: 'pending' }
       ];
       if (!localStorage.getItem('etbs_refunds')) {
         localStorage.setItem('etbs_refunds', JSON.stringify(DEFAULT_REFUNDS));
@@ -583,7 +583,7 @@
         data: {
           labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
           datasets: [{
-            label: 'Sales Revenue ($)',
+            label: 'Sales Revenue (₹)',
             data: [12000, 19000, 32000, 50000, 48000, 65000, 80000, 95000],
             borderColor: '#6366f1',
             tension: 0.4,
@@ -860,9 +860,9 @@
       document.getElementById('modalEventLocation').textContent = evt.location;
       document.getElementById('modalEventDateTime').textContent = `${evt.date} @ ${evt.time}`;
       document.getElementById('modalEventDescription').textContent = evt.description;
-      document.getElementById('modalEventVIPPrice').textContent = `$${evt.prices.VIP.toFixed(2)}`;
-      document.getElementById('modalEventGoldPrice').textContent = `$${evt.prices.Gold.toFixed(2)}`;
-      document.getElementById('modalEventStandardPrice').textContent = `$${evt.prices.Standard.toFixed(2)}`;
+      document.getElementById('modalEventVIPPrice').textContent = `₹${evt.prices.VIP.toFixed(2)}`;
+      document.getElementById('modalEventGoldPrice').textContent = `₹${evt.prices.Gold.toFixed(2)}`;
+      document.getElementById('modalEventStandardPrice').textContent = `₹${evt.prices.Standard.toFixed(2)}`;
       document.getElementById('modalEventCapacity').textContent = `${bookedSeats} Booked / ${totalSeats} Total (${remaining} Left)`;
 
       const modal = new bootstrap.Modal(document.getElementById('viewEventModal'));
@@ -943,9 +943,9 @@
           <div class="mb-3 border-top border-secondary pt-3">
             <label class="text-secondary small fw-semibold d-block mb-2">Ticket Pricing Tiers</label>
             <div class="d-flex justify-content-between text-white small">
-              <div><strong>VIP:</strong> <span id="modalEventVIPPrice">$0.00</span></div>
-              <div><strong>Gold:</strong> <span id="modalEventGoldPrice">$0.00</span></div>
-              <div><strong>Standard:</strong> <span id="modalEventStandardPrice">$0.00</span></div>
+              <div><strong>VIP:</strong> <span id="modalEventVIPPrice">₹0.00</span></div>
+              <div><strong>Gold:</strong> <span id="modalEventGoldPrice">₹0.00</span></div>
+              <div><strong>Standard:</strong> <span id="modalEventStandardPrice">₹0.00</span></div>
             </div>
           </div>
           <div class="mb-2 border-top border-secondary pt-3">
