@@ -526,7 +526,7 @@
         time: '20:30',
         location: 'The Velvet Club, Down Town',
         category: 'Comedy',
-        image: 'https://images.unsplash.com/photo-1585699324551-f6c309eed262?auto=format&fit=crop&w=800&q=80',
+        image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=800&q=80',
         prices: { VIP: 1099, Gold: 799, Standard: 549 }
       },
       {
@@ -562,6 +562,23 @@
 
     // Initialize application data
     document.addEventListener("DOMContentLoaded", () => {
+      // Direct hard repair of the comedy image in local storage if present
+      try {
+        let stored = localStorage.getItem('etbs_events');
+        if (stored) {
+          let evs = JSON.parse(stored);
+          evs = evs.map(e => {
+            if (e.id === 'ev-2') {
+              e.image = 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=800&q=80';
+            }
+            return e;
+          });
+          localStorage.setItem('etbs_events', JSON.stringify(evs));
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
       // Validate customer session
       const user = JSON.parse(localStorage.getItem('currentUser'));
       if (!user || user.role !== 'customer') {
@@ -576,16 +593,24 @@
       const savedEvents = localStorage.getItem('etbs_events');
       if (savedEvents) {
         events = JSON.parse(savedEvents);
-        // Force upgrade if older prices are detected
-        const needsUpgrade = events.some(e => e.prices.Standard < 499) || 
-                              events.some(e => e.id === 'ev-2' && e.prices.Standard === 499);
-        if (needsUpgrade) {
-          events = EVENTS_SEED.map(event => ({
-            ...event,
-            seats: generateInitialSeats()
-          }));
-          localStorage.setItem('etbs_events', JSON.stringify(events));
-        }
+        // Always sync event metadata (title, description, location, category, image, prices) from EVENTS_SEED
+        // while preserving seat booking statuses in localStorage
+        events = events.map(savedEvt => {
+          const seedEvt = EVENTS_SEED.find(s => s.id === savedEvt.id);
+          if (seedEvt) {
+            return {
+              ...savedEvt,
+              title: seedEvt.title,
+              description: seedEvt.description,
+              location: seedEvt.location,
+              category: seedEvt.category,
+              image: seedEvt.image,
+              prices: seedEvt.prices
+            };
+          }
+          return savedEvt;
+        });
+        localStorage.setItem('etbs_events', JSON.stringify(events));
       } else {
         // Build initial seat map structures for seed events
         events = EVENTS_SEED.map(event => ({
