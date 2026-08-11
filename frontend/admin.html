@@ -344,18 +344,8 @@
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>#EVT-8921</td>
-                <td>Neon Horizon DJ Festival</td>
-                <td>VibeNation Concerts</td>
-                <td>2026-09-18 @ 19:00</td>
-                <td>1,240 / 3,000</td>
-                <td><span class="status-badge badge-approved">Live</span></td>
-                <td>
-                  <button class="btn btn-sm btn-outline-light"><i class="fa-solid fa-eye"></i> View</button>
-                </td>
-              </tr>
+            <tbody id="eventsTableBody">
+              <!-- Dynamically populated -->
             </tbody>
           </table>
         </div>
@@ -503,9 +493,89 @@
         localStorage.setItem('etbs_refunds', JSON.stringify(DEFAULT_REFUNDS));
       }
 
+      // Seed default events database if not exists
+      const EVENTS_SEED = [
+        {
+          id: 'ev-1',
+          title: 'Neon Horizon: Electronic Live Music Festival',
+          description: 'Experience an audiovisual journey with world-renowned electronic DJs playing under immersive neon laser setups.',
+          date: '2026-09-18',
+          time: '19:00',
+          location: 'Synthetix Arena, Metro City',
+          category: 'Music',
+          image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80',
+          prices: { VIP: 250, Gold: 150, Standard: 75 }
+        },
+        {
+          id: 'ev-2',
+          title: 'Stand-up Showcase: Laugh Out Loud Night',
+          description: 'A stellar line-up of the country’s funniest stand-up comedians gathered for a night of observational comedy.',
+          date: '2026-08-25',
+          time: '20:30',
+          location: 'The Velvet Club, Down Town',
+          category: 'Comedy',
+          image: 'https://images.unsplash.com/photo-1585699324551-f6c309eed262?auto=format&fit=crop&w=800&q=80',
+          prices: { VIP: 90, Gold: 60, Standard: 35 }
+        },
+        {
+          id: 'ev-3',
+          title: 'NextGen Tech Summit 2026',
+          description: 'Delve into AI agents, quantum computing breakthroughs, and WebGPU graphics standards.',
+          date: '2026-10-05',
+          time: '09:00',
+          location: 'Metropolitan Convention Hall',
+          category: 'Tech',
+          image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
+          prices: { VIP: 400, Gold: 250, Standard: 120 }
+        },
+        {
+          id: 'ev-4',
+          title: 'Championship Basketball: Kings vs Titans',
+          description: 'Witness the ultimate showdown of the season. High-flying dunks and buzzer-beating thrillers.',
+          date: '2026-08-30',
+          time: '18:00',
+          location: 'Grand Plaza Gardens',
+          category: 'Sports',
+          image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
+          prices: { VIP: 180, Gold: 110, Standard: 50 }
+        }
+      ];
+
+      function generateInitialSeats() {
+        const layout = {};
+        const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+        rows.forEach((row, rowIndex) => {
+          let type = 'Standard';
+          if (rowIndex < 2) type = 'VIP';
+          else if (rowIndex < 4) type = 'Gold';
+
+          for (let i = 1; i <= 10; i++) {
+            const seatId = `${row}${i}`;
+            const isBooked = Math.random() < 0.2; // 20% default seeds booked
+            layout[seatId] = {
+              id: seatId,
+              row,
+              number: i,
+              type,
+              status: isBooked ? 'booked' : 'available'
+            };
+          }
+        });
+        return layout;
+      }
+
+      if (!localStorage.getItem('etbs_events')) {
+        const initialEvents = EVENTS_SEED.map(event => ({
+          ...event,
+          seats: generateInitialSeats()
+        }));
+        localStorage.setItem('etbs_events', JSON.stringify(initialEvents));
+      }
+
       renderUsersList();
       renderOrganizersList();
       renderRefundsList();
+      renderEventsList();
 
       const salesCtx = document.getElementById('salesChart').getContext('2d');
       new Chart(salesCtx, {
@@ -744,6 +814,61 @@
       renderUsersList();
     }
 
+    function renderEventsList() {
+      const events = JSON.parse(localStorage.getItem('etbs_events')) || [];
+      const tbody = document.getElementById('eventsTableBody');
+      tbody.innerHTML = '';
+
+      if (events.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-4">No events found in database.</td></tr>`;
+        return;
+      }
+
+      events.forEach(evt => {
+        const totalSeats = Object.keys(evt.seats || {}).length;
+        const bookedSeats = Object.values(evt.seats || {}).filter(s => s.status === 'booked').length;
+        const remaining = totalSeats - bookedSeats;
+
+        const row = `
+          <tr>
+            <td>#EVT-${evt.id.replace('ev-', '')}</td>
+            <td>${evt.title}</td>
+            <td>VibeNation Concerts</td>
+            <td>${evt.date} @ ${evt.time}</td>
+            <td>${remaining.toLocaleString()} / ${totalSeats.toLocaleString()}</td>
+            <td><span class="status-badge badge-approved">Live</span></td>
+            <td>
+              <button class="btn btn-sm btn-outline-light" onclick="viewEventDetails('${evt.id}')"><i class="fa-solid fa-eye"></i> View</button>
+            </td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+    }
+
+    function viewEventDetails(id) {
+      const events = JSON.parse(localStorage.getItem('etbs_events')) || [];
+      const evt = events.find(e => e.id === id);
+      if (!evt) return;
+
+      const totalSeats = Object.keys(evt.seats || {}).length;
+      const bookedSeats = Object.values(evt.seats || {}).filter(s => s.status === 'booked').length;
+      const remaining = totalSeats - bookedSeats;
+
+      document.getElementById('modalEventTitle').textContent = evt.title;
+      document.getElementById('modalEventCategory').textContent = evt.category;
+      document.getElementById('modalEventLocation').textContent = evt.location;
+      document.getElementById('modalEventDateTime').textContent = `${evt.date} @ ${evt.time}`;
+      document.getElementById('modalEventDescription').textContent = evt.description;
+      document.getElementById('modalEventVIPPrice').textContent = `$${evt.prices.VIP.toFixed(2)}`;
+      document.getElementById('modalEventGoldPrice').textContent = `$${evt.prices.Gold.toFixed(2)}`;
+      document.getElementById('modalEventStandardPrice').textContent = `$${evt.prices.Standard.toFixed(2)}`;
+      document.getElementById('modalEventCapacity').textContent = `${bookedSeats} Booked / ${totalSeats} Total (${remaining} Left)`;
+
+      const modal = new bootstrap.Modal(document.getElementById('viewEventModal'));
+      modal.show();
+    }
+
     function handleLogout() {
       localStorage.removeItem('currentUser');
       window.location.href = 'login.html';
@@ -785,6 +910,52 @@
             <button type="submit" class="btn btn-primary btn-sm">Add User</button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Event Modal -->
+  <div class="modal fade" id="viewEventModal" tabindex="-1" aria-hidden="true" style="backdrop-filter: blur(10px);">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content glass-card text-white border-0"
+        style="background: rgba(18, 20, 32, 0.95); border: 1px solid var(--border-color);">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold" id="modalEventTitle">Event Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="text-secondary small fw-semibold d-block">Category</label>
+            <span id="modalEventCategory" class="badge bg-indigo text-white border border-secondary">Music</span>
+          </div>
+          <div class="mb-3">
+            <label class="text-secondary small fw-semibold d-block">Location / Venue</label>
+            <span id="modalEventLocation" class="text-white">Synthetix Arena</span>
+          </div>
+          <div class="mb-3">
+            <label class="text-secondary small fw-semibold d-block">Date & Time</label>
+            <span id="modalEventDateTime" class="text-white">2026-09-18 @ 19:00</span>
+          </div>
+          <div class="mb-3">
+            <label class="text-secondary small fw-semibold d-block">Description</label>
+            <p id="modalEventDescription" class="text-secondary small mb-0"></p>
+          </div>
+          <div class="mb-3 border-top border-secondary pt-3">
+            <label class="text-secondary small fw-semibold d-block mb-2">Ticket Pricing Tiers</label>
+            <div class="d-flex justify-content-between text-white small">
+              <div><strong>VIP:</strong> <span id="modalEventVIPPrice">$0.00</span></div>
+              <div><strong>Gold:</strong> <span id="modalEventGoldPrice">$0.00</span></div>
+              <div><strong>Standard:</strong> <span id="modalEventStandardPrice">$0.00</span></div>
+            </div>
+          </div>
+          <div class="mb-2 border-top border-secondary pt-3">
+            <label class="text-secondary small fw-semibold d-block">Ticket Sales Capacity</label>
+            <span id="modalEventCapacity" class="text-white small">0 Booked / 60 Total</span>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
