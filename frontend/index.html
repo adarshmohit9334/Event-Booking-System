@@ -620,25 +620,31 @@
     let selectedSeats = [];
     let confirmedBooking = null;
 
+    // Helper functions to interact with the backend API
+    function getAuthHeader() {
+      const user = JSON.parse(localStorage.getItem('currentUser'));
+      return user && user.token ? { 'Authorization': 'Bearer ' + user.token } : {};
+    }
+
+    function fetchFromBackend(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+        ...options.headers
+      };
+      return fetch('http://localhost:8081' + endpoint, {
+        ...options,
+        headers
+      }).then(res => {
+        if (!res.ok) {
+          return res.json().then(err => { throw new Error(err.message || 'API request failed') });
+        }
+        return res.json();
+      });
+    }
+
     // Initialize application data
     document.addEventListener("DOMContentLoaded", () => {
-      // Direct hard repair of the comedy image in local storage if present
-      try {
-        let stored = localStorage.getItem('etbs_events');
-        if (stored) {
-          let evs = JSON.parse(stored);
-          evs = evs.map(e => {
-            if (e.id === 'ev-2') {
-              e.image = 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=800&q=80';
-            }
-            return e;
-          });
-          localStorage.setItem('etbs_events', JSON.stringify(evs));
-        }
-      } catch (err) {
-        console.error(err);
-      }
-
       // Validate customer session
       const user = JSON.parse(localStorage.getItem('currentUser'));
       if (!user || user.role !== 'customer') {
@@ -649,44 +655,8 @@
       // Update navbar user profile name
       document.getElementById('navbarUserName').textContent = user.name;
 
-      // Load events
-      const savedEvents = localStorage.getItem('etbs_events');
-      if (savedEvents) {
-        events = JSON.parse(savedEvents);
-        // Always sync event metadata (title, description, location, category, image, prices) from EVENTS_SEED
-        // while preserving seat booking statuses in localStorage
-        events = events.map(savedEvt => {
-          const seedEvt = EVENTS_SEED.find(s => s.id === savedEvt.id);
-          if (seedEvt) {
-            return {
-              ...savedEvt,
-              title: seedEvt.title,
-              description: seedEvt.description,
-              location: seedEvt.location,
-              category: seedEvt.category,
-              image: seedEvt.image,
-              prices: seedEvt.prices
-            };
-          }
-          return savedEvt;
-        });
-        localStorage.setItem('etbs_events', JSON.stringify(events));
-      } else {
-        // Build initial seat map structures for seed events
-        events = EVENTS_SEED.map(event => ({
-          ...event,
-          seats: generateInitialSeats()
-        }));
-        localStorage.setItem('etbs_events', JSON.stringify(events));
-      }
-
-      // Load bookings
-      const savedBookings = localStorage.getItem('etbs_bookings');
-      if (savedBookings) {
-        bookings = JSON.parse(savedBookings);
-      }
-
-      renderEvents();
+      // Load events from backend
+      fetchEvents();
     });
 
     function handleLogout() {
@@ -694,27 +664,16 @@
       window.location.href = 'login.html';
     }
 
-    function generateInitialSeats() {
-      const layout = {};
-      const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
-      rows.forEach((row, rowIndex) => {
-        let type = 'Standard';
-        if (rowIndex < 2) type = 'VIP';
-        else if (rowIndex < 4) type = 'Gold';
-
-        for (let i = 1; i <= 10; i++) {
-          const seatId = `${row}${i}`;
-          const isBooked = Math.random() < 0.25;
-          layout[seatId] = {
-            id: seatId,
-            row,
-            number: i,
-            type,
-            status: isBooked ? 'booked' : 'available'
-          };
-        }
-      });
-      return layout;
+    // Fetch events list
+    function fetchEvents() {
+      fetchFromBackend('/api/events')
+        .then(data => {
+          events = data;
+          renderEvents();
+        })
+        .catch(err => {
+          console.error('Error fetching events:', err);
+        });
     }
 
     // Render event listings grid
@@ -731,9 +690,7 @@
       });
 
       filtered.forEach(evt => {
-        const total = Object.keys(evt.seats).length;
-        const booked = Object.values(evt.seats).filter(s => s.status === 'booked').length;
-        const left = total - booked;
+        const left = evt.leftSeats;
 
         const card = `
           <div class="col-md-6 col-lg-4">
@@ -813,32 +770,41 @@
       document.getElementById('totalPriceLabel').textContent = '₹0';
       document.getElementById('btnGoToPayment').disabled = true;
 
-      // Build seat grid layout
-      const grid = document.getElementById('seatMapGrid');
-      grid.innerHTML = '';
+      // Load seats dynamically from backend database
+      fetchFromBackend(`/api/events/${eventId}/seats`)
+        .then(seatsMap => {
+          activeEvent.seats = seatsMap;
+          
+          // Build seat grid layout
+          const grid = document.getElementById('seatMapGrid');
+          grid.innerHTML = '';
 
-      const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
-      rows.forEach(row => {
-        for (let i = 1; i <= 10; i++) {
-          const seatId = `${row}${i}`;
-          const seat = activeEvent.seats[seatId];
+          const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
+          rows.forEach(row => {
+            for (let i = 1; i <= 10; i++) {
+              const seatId = `${row}${i}`;
+              const seat = activeEvent.seats[seatId];
 
-          const seatBtn = document.createElement('div');
-          seatBtn.className = `seat-btn seat-available-${seat.type.toLowerCase()}`;
-          if (seat.status === 'booked') seatBtn.className = 'seat-btn seat-booked';
-          seatBtn.textContent = `${row}${i}`;
-          seatBtn.onclick = () => toggleSeatSelection(seatBtn, seatId);
-          grid.appendChild(seatBtn);
-        }
-      });
+              const seatBtn = document.createElement('div');
+              seatBtn.className = `seat-btn seat-available-${seat.type.toLowerCase()}`;
+              if (seat.status === 'booked') seatBtn.className = 'seat-btn seat-booked';
+              seatBtn.textContent = `${row}${i}`;
+              seatBtn.onclick = () => toggleSeatSelection(seatBtn, seatId);
+              grid.appendChild(seatBtn);
+            }
+          });
 
-      // Show step 1
-      document.getElementById('bookingStep1').classList.remove('d-none');
-      document.getElementById('bookingStep2').classList.add('d-none');
-      document.getElementById('bookingStep3').classList.add('d-none');
+          // Show step 1
+          document.getElementById('bookingStep1').classList.remove('d-none');
+          document.getElementById('bookingStep2').classList.add('d-none');
+          document.getElementById('bookingStep3').classList.add('d-none');
 
-      const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
-      modal.show();
+          const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+          modal.show();
+        })
+        .catch(err => {
+          alert('Error loading seat layout: ' + err.message);
+        });
     }
 
     function toggleSeatSelection(element, seatId) {
@@ -931,57 +897,52 @@
         }
       }
 
-      // Reserve seats
-      events = events.map(evt => {
-        if (evt.id === activeEvent.id) {
-          const updatedSeats = { ...evt.seats };
-          selectedSeats.forEach(sid => {
-            updatedSeats[sid].status = 'booked';
-          });
-          return { ...evt, seats: updatedSeats };
-        }
-        return evt;
+      // Create booking order on backend
+      fetchFromBackend('/api/bookings/create-order', {
+        method: 'POST',
+        body: JSON.stringify({
+          eventId: activeEvent.id,
+          seats: selectedSeats
+        })
+      })
+      .then(orderData => {
+        // Verify payment (mock verification)
+        return fetchFromBackend('/api/bookings/verify-payment', {
+          method: 'POST',
+          body: JSON.stringify({
+            bookingId: orderData.bookingId,
+            paymentId: 'pay_mock_' + Date.now(),
+            signature: 'sig_mock_' + Date.now()
+          })
+        });
+      })
+      .then(verifyData => {
+        confirmedBooking = verifyData.booking;
+
+        // Display Step 3
+        document.getElementById('successRefCode').textContent = confirmedBooking.id.toUpperCase();
+        document.getElementById('ticketEventTitle').textContent = confirmedBooking.eventTitle;
+        document.getElementById('ticketEventDate').textContent = `${confirmedBooking.eventDate} @ ${confirmedBooking.eventTime}`;
+        document.getElementById('ticketEventVenue').textContent = confirmedBooking.eventLocation;
+        document.getElementById('ticketSeats').textContent = confirmedBooking.seats;
+        document.getElementById('ticketBarcodeText').textContent = confirmedBooking.id.toUpperCase();
+
+        document.getElementById('bookingStep2').classList.add('d-none');
+        document.getElementById('bookingStep3').classList.remove('d-none');
+
+        // Trigger Confetti
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 }
+        });
+
+        // Refresh events list
+        fetchEvents();
+      })
+      .catch(err => {
+        alert(err.message);
       });
-      localStorage.setItem('etbs_events', JSON.stringify(events));
-
-      // Create booking record
-      const totalPrice = selectedSeats.reduce((sum, id) => sum + activeEvent.prices[activeEvent.seats[id].type], 0);
-      const ref = `bk-${Date.now()}`;
-      confirmedBooking = {
-        id: ref,
-        eventId: activeEvent.id,
-        eventTitle: activeEvent.title,
-        eventDate: activeEvent.date,
-        eventTime: activeEvent.time,
-        eventLocation: activeEvent.location,
-        eventImage: activeEvent.image,
-        seats: selectedSeats,
-        totalPrice: totalPrice,
-        bookedAt: new Date().toISOString()
-      };
-
-      bookings.unshift(confirmedBooking);
-      localStorage.setItem('etbs_bookings', JSON.stringify(bookings));
-
-      // Display Step 3
-      document.getElementById('successRefCode').textContent = ref.toUpperCase();
-      document.getElementById('ticketEventTitle').textContent = activeEvent.title;
-      document.getElementById('ticketEventDate').textContent = `${activeEvent.date} @ ${activeEvent.time}`;
-      document.getElementById('ticketEventVenue').textContent = activeEvent.location;
-      document.getElementById('ticketSeats').textContent = selectedSeats.join(', ');
-      document.getElementById('ticketBarcodeText').textContent = ref.toUpperCase();
-
-      document.getElementById('bookingStep2').classList.add('d-none');
-      document.getElementById('bookingStep3').classList.remove('d-none');
-
-      // Trigger Confetti
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 }
-      });
-
-      renderEvents();
     }
 
     // Ticket download canvas compiler
@@ -1039,7 +1000,7 @@
       ctx.fillText('SEATS RESERVED', 380, 185);
       ctx.fillStyle = '#d946ef';
       ctx.font = 'bold 16px Inter, sans-serif';
-      ctx.fillText(confirmedBooking.seats.join(', '), 380, 205);
+      ctx.fillText(confirmedBooking.seats, 380, 205);
 
       ctx.fillStyle = '#94a3b8';
       ctx.font = '13px Inter, sans-serif';
@@ -1079,46 +1040,54 @@
       const grid = document.getElementById('bookingsGrid');
       grid.innerHTML = '';
 
-      if (bookings.length === 0) {
-        grid.innerHTML = `
-          <div class="col-12 text-center py-5">
-            <i class="fa-solid fa-ticket fa-3x text-secondary mb-3"></i>
-            <h5 class="text-white">No tickets booked yet</h5>
-            <p class="text-secondary small mb-3">Browse our live shows feed and book your seat layouts.</p>
-            <button class="btn btn-primary btn-sm px-4 rounded-pill" onclick="switchPage('discover')">Explore Events</button>
-          </div>
-        `;
-        return;
-      }
+      fetchFromBackend('/api/bookings/my-tickets')
+        .then(bookingsList => {
+          bookings = bookingsList;
 
-      bookings.forEach(bkg => {
-        const card = `
-          <div class="col-12">
-            <div class="glass-panel text-white d-flex flex-wrap overflow-hidden align-items-center">
-              <img src="${bkg.eventImage}" alt="${bkg.eventTitle}" style="width:120px; height:120px; object-fit:cover;">
-              <div class="p-3 flex-grow-1 min-width-0">
-                <small class="text-muted d-block font-monospace">REF: ${bkg.id.toUpperCase()}</small>
-                <h5 class="fw-bold mb-2">${bkg.eventTitle}</h5>
-                <div class="d-flex gap-3 text-secondary small">
-                  <span><i class="fa-regular fa-calendar text-primary me-1"></i> ${bkg.eventDate} @ ${bkg.eventTime}</span>
-                  <span><i class="fa-solid fa-map-pin text-danger me-1"></i> ${bkg.eventLocation}</span>
+          if (bookings.length === 0) {
+            grid.innerHTML = `
+              <div class="col-12 text-center py-5">
+                <i class="fa-solid fa-ticket fa-3x text-secondary mb-3"></i>
+                <h5 class="text-white">No tickets booked yet</h5>
+                <p class="text-secondary small mb-3">Browse our live shows feed and book your seat layouts.</p>
+                <button class="btn btn-primary btn-sm px-4 rounded-pill" onclick="switchPage('discover')">Explore Events</button>
+              </div>
+            `;
+            return;
+          }
+
+          bookings.forEach(bkg => {
+            const card = `
+              <div class="col-12">
+                <div class="glass-panel text-white d-flex flex-wrap overflow-hidden align-items-center">
+                  <img src="${bkg.eventImage}" alt="${bkg.eventTitle}" style="width:120px; height:120px; object-fit:cover;">
+                  <div class="p-3 flex-grow-1 min-width-0">
+                    <small class="text-muted d-block font-monospace">REF: ${bkg.id.toUpperCase()}</small>
+                    <h5 class="fw-bold mb-2">${bkg.eventTitle}</h5>
+                    <div class="d-flex gap-3 text-secondary small">
+                      <span><i class="fa-regular fa-calendar text-primary me-1"></i> ${bkg.eventDate} @ ${bkg.eventTime}</span>
+                      <span><i class="fa-solid fa-map-pin text-danger me-1"></i> ${bkg.eventLocation}</span>
+                    </div>
+                  </div>
+                  <div class="p-3 border-start border-secondary text-start" style="min-width: 140px;">
+                    <small class="text-muted fs-8 d-block">Seats</small>
+                    <strong class="text-magenta" style="color: var(--accent-secondary);">${bkg.seats.join(', ')}</strong>
+                    <small class="text-muted fs-8 d-block mt-2">Paid</small>
+                    <strong class="text-success">₹${bkg.totalPrice}</strong>
+                  </div>
+                  <div class="p-3 border-start border-secondary d-flex flex-column gap-2" style="min-width: 140px;">
+                    <button class="btn btn-outline-light btn-sm w-100" onclick="downloadSelectedTicket('${bkg.id}')"><i class="fa-solid fa-download me-1"></i> Download</button>
+                    <button class="btn btn-outline-danger btn-sm w-100" onclick="cancelBooking('${bkg.id}')"><i class="fa-solid fa-trash-can me-1"></i> Cancel</button>
+                  </div>
                 </div>
               </div>
-              <div class="p-3 border-start border-secondary text-start" style="min-width: 140px;">
-                <small class="text-muted fs-8 d-block">Seats</small>
-                <strong class="text-magenta" style="color: var(--accent-secondary);">${bkg.seats.join(', ')}</strong>
-                <small class="text-muted fs-8 d-block mt-2">Paid</small>
-                <strong class="text-success">₹${bkg.totalPrice}</strong>
-              </div>
-              <div class="p-3 border-start border-secondary d-flex flex-column gap-2" style="min-width: 140px;">
-                <button class="btn btn-outline-light btn-sm w-100" onclick="downloadSelectedTicket('${bkg.id}')"><i class="fa-solid fa-download me-1"></i> Download</button>
-                <button class="btn btn-outline-danger btn-sm w-100" onclick="cancelBooking('${bkg.id}')"><i class="fa-solid fa-trash-can me-1"></i> Cancel</button>
-              </div>
-            </div>
-          </div>
-        `;
-        grid.innerHTML += card;
-      });
+            `;
+            grid.innerHTML += card;
+          });
+        })
+        .catch(err => {
+          alert('Error loading bookings: ' + err.message);
+        });
     }
 
     function downloadSelectedTicket(bookingId) {
@@ -1129,31 +1098,17 @@
     function cancelBooking(bookingId) {
       if (!confirm("Are you sure you want to cancel this booking and request a refund?")) return;
 
-      const booking = bookings.find(b => b.id === bookingId);
-      if (!booking) return;
-
-      // Free seats
-      events = events.map(evt => {
-        if (evt.id === booking.eventId) {
-          const updatedSeats = { ...evt.seats };
-          booking.seats.forEach(sid => {
-            if (updatedSeats[sid]) {
-              updatedSeats[sid].status = 'available';
-            }
-          });
-          return { ...evt, seats: updatedSeats };
-        }
-        return evt;
+      fetchFromBackend(`/api/bookings/${bookingId}/cancel`, {
+        method: 'POST'
+      })
+      .then(data => {
+        alert(data.message || "Booking cancelled successfully. Refund has been initiated.");
+        renderBookings();
+        fetchEvents();
+      })
+      .catch(err => {
+        alert(err.message);
       });
-      localStorage.setItem('etbs_events', JSON.stringify(events));
-
-      // Remove booking record
-      bookings = bookings.filter(b => b.id !== bookingId);
-      localStorage.setItem('etbs_bookings', JSON.stringify(bookings));
-
-      alert("Booking cancelled successfully. Refund has been initiated.");
-      renderBookings();
-      renderEvents();
     }
   </script>
 </body>

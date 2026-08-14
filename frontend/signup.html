@@ -274,28 +274,26 @@
         return;
       }
 
-      // Check if email already exists in system database
-      const DEFAULT_USERS = [
-        { email: 'admin@eventify.com', role: 'admin', name: 'Administrator' },
-        { email: 'john.doe@gmail.com', role: 'customer', name: 'John Doe' },
-        { email: 'sarah.s@yahoo.com', role: 'customer', name: 'Sarah Smith' }
-      ];
-
-      let users = JSON.parse(localStorage.getItem('etbs_users')) || DEFAULT_USERS;
-      users = users.filter(u => u.role !== 'organizer');
-      const exists = users.some(u => u.email === email);
-
-      if (exists) {
-        alert("Error: This email address is already in use by another account.");
-        return;
-      }
-
-      // Register new user
-      users.push({ email, role, name });
-      localStorage.setItem('etbs_users', JSON.stringify(users));
-
-      alert("Registration Successful! You can now log in.");
-      window.location.href = 'login.html';
+      fetch('http://localhost:8081/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ name, email, role, password })
+      })
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => { throw new Error(err.message || 'Registration failed') });
+        }
+        return res.json();
+      })
+      .then(data => {
+        alert("Registration Successful! You can now log in.");
+        window.location.href = 'login.html';
+      })
+      .catch(err => {
+        alert(err.message);
+      });
     }
 
     function togglePasswordVisibility(inputId, iconId) {

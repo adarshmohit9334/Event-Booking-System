@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: etbs
+  datasource:
+    url: jdbc:h2:mem:etbsdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+app:
+  jwt:
+    secret: "3c96ff3c27fbd988026ac83ce22112aa73816db5ee5b3ab3b4deedfecd8b78ae22b65ad773ca8e359ae035da4ddf11dd"
+    expiration-ms: 86400000 # 24 Hours
+  razorpay:
+    key-id: "rzp_test_mockKeyId123"
+    key-secret: "mockKeySecret456"
+
+server:
+  port: 8081
+  error:
+    include-message: always
