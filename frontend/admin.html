@@ -438,6 +438,40 @@
   </main>
 
   <script>
+    let events = [];
+
+    // Helper functions to interact with the backend API
+    function getAuthHeader() {
+      const user = JSON.parse(localStorage.getItem('currentUser'));
+      return user && user.token ? { 'Authorization': 'Bearer ' + user.token } : {};
+    }
+
+    function fetchFromBackend(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeader(),
+        ...options.headers
+      };
+      return fetch('http://localhost:8081' + endpoint, {
+        ...options,
+        headers
+      }).then(res => {
+        if (!res.ok) {
+          return res.text().then(text => {
+            let errMsg = 'API request failed';
+            try {
+              const errJson = JSON.parse(text);
+              errMsg = errJson.message || errMsg;
+            } catch(e) {
+              errMsg = text || res.statusText || errMsg;
+            }
+            throw new Error(errMsg);
+          });
+        }
+        return res.json();
+      });
+    }
+
     // Tab switching controller
     function switchTab(tabId) {
       // Manage nav links status
@@ -465,27 +499,18 @@
         settings: "Global System Settings"
       };
       document.getElementById('section-title').textContent = titles[tabId] || "Console";
+
+      if (tabId === 'bookings') {
+        renderBookingsList();
+      } else if (tabId === 'events') {
+        renderEventsList();
+      } else if (tabId === 'refunds') {
+        renderRefundsList();
+      }
     }
 
     // Session check & Chart.js Config
     document.addEventListener("DOMContentLoaded", () => {
-      // Direct hard repair of the comedy image in local storage if present
-      try {
-        let stored = localStorage.getItem('etbs_events');
-        if (stored) {
-          let evs = JSON.parse(stored);
-          evs = evs.map(e => {
-            if (e.id === 'ev-2') {
-              e.image = 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=800&q=80';
-            }
-            return e;
-          });
-          localStorage.setItem('etbs_events', JSON.stringify(evs));
-        }
-      } catch (err) {
-        console.error(err);
-      }
-
       // Validate admin session
       const user = JSON.parse(localStorage.getItem('currentUser'));
       if (!user || user.role !== 'admin') {
@@ -502,118 +527,11 @@
         localStorage.setItem('etbs_organizers', JSON.stringify(DEFAULT_ORGANIZERS));
       }
 
-      // Seed default refunds
-      const DEFAULT_REFUNDS = [
-        { id: '#RFD-203', bookingId: '#BKG-9842', reason: 'Medical emergency', amount: '₹75.00', date: '2026-08-06', status: 'pending' }
-      ];
-      if (!localStorage.getItem('etbs_refunds')) {
-        localStorage.setItem('etbs_refunds', JSON.stringify(DEFAULT_REFUNDS));
-      }
-
-      // Seed default events database if not exists
-      const EVENTS_SEED = [
-        {
-          id: 'ev-1',
-          title: 'Neon Horizon: Electronic Live Music Festival',
-          description: 'Experience an audiovisual journey with world-renowned electronic DJs playing under immersive neon laser setups.',
-          date: '2026-09-18',
-          time: '19:00',
-          location: 'Synthetix Arena, Metro City',
-          category: 'Music',
-          image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80',
-          prices: { VIP: 999, Gold: 749, Standard: 499 }
-        },
-        {
-          id: 'ev-2',
-          title: 'Stand-up Showcase: Laugh Out Loud Night',
-          description: 'A stellar line-up of the country’s funniest stand-up comedians gathered for a night of observational comedy.',
-          date: '2026-08-25',
-          time: '20:30',
-          location: 'The Velvet Club, Down Town',
-          category: 'Comedy',
-          image: 'https://images.unsplash.com/photo-1507676184212-d03ab07a01bf?auto=format&fit=crop&w=800&q=80',
-          prices: { VIP: 1099, Gold: 799, Standard: 549 }
-        },
-        {
-          id: 'ev-3',
-          title: 'NextGen Tech Summit 2026',
-          description: 'Delve into AI agents, quantum computing breakthroughs, and WebGPU graphics standards.',
-          date: '2026-10-05',
-          time: '09:00',
-          location: 'Metropolitan Convention Hall',
-          category: 'Tech',
-          image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80',
-          prices: { VIP: 1499, Gold: 999, Standard: 699 }
-        },
-        {
-          id: 'ev-4',
-          title: 'Championship Basketball: Kings vs Titans',
-          description: 'Witness the ultimate showdown of the season. High-flying dunks and buzzer-beating thrillers.',
-          date: '2026-08-30',
-          time: '18:00',
-          location: 'Grand Plaza Gardens',
-          category: 'Sports',
-          image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
-          prices: { VIP: 1199, Gold: 849, Standard: 599 }
-        }
-      ];
-
-      function generateInitialSeats() {
-        const layout = {};
-        const rows = ['A', 'B', 'C', 'D', 'E', 'F'];
-        rows.forEach((row, rowIndex) => {
-          let type = 'Standard';
-          if (rowIndex < 2) type = 'VIP';
-          else if (rowIndex < 4) type = 'Gold';
-
-          for (let i = 1; i <= 10; i++) {
-            const seatId = `${row}${i}`;
-            const isBooked = Math.random() < 0.2; // 20% default seeds booked
-            layout[seatId] = {
-              id: seatId,
-              row,
-              number: i,
-              type,
-              status: isBooked ? 'booked' : 'available'
-            };
-          }
-        });
-        return layout;
-      }
-
-      const savedEvents = localStorage.getItem('etbs_events');
-      if (savedEvents) {
-        let events = JSON.parse(savedEvents);
-        // Always sync event metadata (title, description, location, category, image, prices) from EVENTS_SEED
-        // while preserving seat booking statuses in localStorage
-        events = events.map(savedEvt => {
-          const seedEvt = EVENTS_SEED.find(s => s.id === savedEvt.id);
-          if (seedEvt) {
-            return {
-              ...savedEvt,
-              title: seedEvt.title,
-              description: seedEvt.description,
-              location: seedEvt.location,
-              category: seedEvt.category,
-              image: seedEvt.image,
-              prices: seedEvt.prices
-            };
-          }
-          return savedEvt;
-        });
-        localStorage.setItem('etbs_events', JSON.stringify(events));
-      } else {
-        const initialEvents = EVENTS_SEED.map(event => ({
-          ...event,
-          seats: generateInitialSeats()
-        }));
-        localStorage.setItem('etbs_events', JSON.stringify(initialEvents));
-      }
-
       renderUsersList();
       renderOrganizersList();
-      renderRefundsList();
       renderEventsList();
+      renderBookingsList();
+      renderRefundsList();
 
       const salesCtx = document.getElementById('salesChart').getContext('2d');
       new Chart(salesCtx, {
@@ -852,59 +770,167 @@
       renderUsersList();
     }
 
+    function renderBookingsList() {
+      fetchFromBackend('/api/bookings/all')
+        .then(bookings => {
+          const tbody = document.getElementById('bookingsTableBody');
+          tbody.innerHTML = '';
+
+          if (bookings.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-4">No bookings found in system.</td></tr>`;
+            return;
+          }
+
+          bookings.forEach(bkg => {
+            let statusText = 'Completed';
+            let badgeClass = 'badge-approved';
+            if (bkg.status === 'pending') {
+              statusText = 'Pending';
+              badgeClass = 'badge-pending';
+            } else if (bkg.status === 'cancelled') {
+              statusText = 'Cancelled';
+              badgeClass = 'badge-failed';
+            }
+
+            const row = `
+              <tr>
+                <td>#${bkg.id.toUpperCase()}</td>
+                <td>${bkg.userEmail}</td>
+                <td>${bkg.eventTitle}</td>
+                <td>${bkg.seats.join(', ')}</td>
+                <td>₹${bkg.totalPrice.toFixed(2)}</td>
+                <td>${bkg.bookedAt.substring(0, 10)}</td>
+                <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
+              </tr>
+            `;
+            tbody.innerHTML += row;
+          });
+        })
+        .catch(err => console.error('Error fetching bookings:', err));
+    }
+
     function renderEventsList() {
-      const events = JSON.parse(localStorage.getItem('etbs_events')) || [];
-      const tbody = document.getElementById('eventsTableBody');
-      tbody.innerHTML = '';
+      fetchFromBackend('/api/events')
+        .then(data => {
+          events = data;
+          const tbody = document.getElementById('eventsTableBody');
+          tbody.innerHTML = '';
 
-      if (events.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-4">No events found in database.</td></tr>`;
-        return;
-      }
+          if (events.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-4">No events found in database.</td></tr>`;
+            return;
+          }
 
-      events.forEach(evt => {
-        const totalSeats = Object.keys(evt.seats || {}).length;
-        const bookedSeats = Object.values(evt.seats || {}).filter(s => s.status === 'booked').length;
-        const remaining = totalSeats - bookedSeats;
+          events.forEach(evt => {
+            const totalSeats = 60;
+            const remaining = evt.leftSeats;
 
-        const row = `
-          <tr>
-            <td>#EVT-${evt.id.replace('ev-', '')}</td>
-            <td>${evt.title}</td>
-            <td>VibeNation Concerts</td>
-            <td>${evt.date} @ ${evt.time}</td>
-            <td>${remaining.toLocaleString()} / ${totalSeats.toLocaleString()}</td>
-            <td><span class="status-badge badge-approved">Live</span></td>
-            <td>
-              <button class="btn btn-sm btn-outline-light" onclick="viewEventDetails('${evt.id}')"><i class="fa-solid fa-eye"></i> View</button>
-            </td>
-          </tr>
-        `;
-        tbody.innerHTML += row;
-      });
+            const row = `
+              <tr>
+                <td>#EVT-${evt.id.replace('ev-', '')}</td>
+                <td>${evt.title}</td>
+                <td>VibeNation Concerts</td>
+                <td>${evt.date} @ ${evt.time}</td>
+                <td>${remaining.toLocaleString()} / ${totalSeats.toLocaleString()}</td>
+                <td><span class="status-badge badge-approved">Live</span></td>
+                <td>
+                  <button class="btn btn-sm btn-outline-light" onclick="viewEventDetails('${evt.id}')"><i class="fa-solid fa-eye"></i> View</button>
+                </td>
+              </tr>
+            `;
+            tbody.innerHTML += row;
+          });
+        })
+        .catch(err => console.error('Error fetching events:', err));
     }
 
     function viewEventDetails(id) {
-      const events = JSON.parse(localStorage.getItem('etbs_events')) || [];
-      const evt = events.find(e => e.id === id);
-      if (!evt) return;
+      fetchFromBackend(`/api/events/${id}/seats`)
+        .then(seatsMap => {
+          const evt = events.find(e => e.id === id);
+          if (!evt) return;
 
-      const totalSeats = Object.keys(evt.seats || {}).length;
-      const bookedSeats = Object.values(evt.seats || {}).filter(s => s.status === 'booked').length;
-      const remaining = totalSeats - bookedSeats;
+          const totalSeats = Object.keys(seatsMap).length;
+          const bookedSeats = Object.values(seatsMap).filter(s => s.status === 'booked').length;
+          const remaining = totalSeats - bookedSeats;
 
-      document.getElementById('modalEventTitle').textContent = evt.title;
-      document.getElementById('modalEventCategory').textContent = evt.category;
-      document.getElementById('modalEventLocation').textContent = evt.location;
-      document.getElementById('modalEventDateTime').textContent = `${evt.date} @ ${evt.time}`;
-      document.getElementById('modalEventDescription').textContent = evt.description;
-      document.getElementById('modalEventVIPPrice').textContent = `₹${evt.prices.VIP.toFixed(2)}`;
-      document.getElementById('modalEventGoldPrice').textContent = `₹${evt.prices.Gold.toFixed(2)}`;
-      document.getElementById('modalEventStandardPrice').textContent = `₹${evt.prices.Standard.toFixed(2)}`;
-      document.getElementById('modalEventCapacity').textContent = `${bookedSeats} Booked / ${totalSeats} Total (${remaining} Left)`;
+          document.getElementById('modalEventTitle').textContent = evt.title;
+          document.getElementById('modalEventCategory').textContent = evt.category;
+          document.getElementById('modalEventLocation').textContent = evt.location;
+          document.getElementById('modalEventDateTime').textContent = `${evt.date} @ ${evt.time}`;
+          document.getElementById('modalEventDescription').textContent = evt.description;
+          document.getElementById('modalEventVIPPrice').textContent = `₹${evt.prices.VIP.toFixed(2)}`;
+          document.getElementById('modalEventGoldPrice').textContent = `₹${evt.prices.Gold.toFixed(2)}`;
+          document.getElementById('modalEventStandardPrice').textContent = `₹${evt.prices.Standard.toFixed(2)}`;
+          document.getElementById('modalEventCapacity').textContent = `${bookedSeats} Booked / ${totalSeats} Total (${remaining} Left)`;
 
-      const modal = new bootstrap.Modal(document.getElementById('viewEventModal'));
-      modal.show();
+          const modal = new bootstrap.Modal(document.getElementById('viewEventModal'));
+          modal.show();
+        })
+        .catch(err => alert('Error loading event seats: ' + err.message));
+    }
+
+    function renderRefundsList() {
+      fetchFromBackend('/api/refunds/admin/queue')
+        .then(refunds => {
+          const tbody = document.getElementById('refundsTableBody');
+          tbody.innerHTML = '';
+
+          if (refunds.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-secondary py-4">No refund requests in queue.</td></tr>`;
+            return;
+          }
+
+          refunds.forEach(rfd => {
+            let badgeClass = 'badge-pending';
+            let statusText = 'Awaiting Approval';
+            if (rfd.status === 'approved') {
+              badgeClass = 'badge-approved';
+              statusText = 'Processed';
+            } else if (rfd.status === 'rejected') {
+              badgeClass = 'badge-failed';
+              statusText = 'Declined';
+            }
+
+            let actionButtons = '';
+            if (rfd.status === 'pending') {
+              actionButtons = `
+                <button class="btn btn-sm btn-success me-1" onclick="updateRefundStatus('${rfd.id}', 'approved')">Process Refund</button>
+                <button class="btn btn-sm btn-danger" onclick="updateRefundStatus('${rfd.id}', 'rejected')">Decline</button>
+              `;
+            } else {
+              actionButtons = `
+                <button class="btn btn-sm btn-outline-secondary" disabled>${rfd.status === 'approved' ? 'Processed' : 'Declined'}</button>
+              `;
+            }
+
+            const row = `
+              <tr>
+                <td>#${rfd.id.toUpperCase()}</td>
+                <td>#${rfd.bookingId.toUpperCase()}</td>
+                <td>${rfd.reason}</td>
+                <td>₹${rfd.amount.toFixed(2)}</td>
+                <td>${rfd.requestedAt.substring(0, 10)}</td>
+                <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
+                <td>${actionButtons}</td>
+              </tr>
+            `;
+            tbody.innerHTML += row;
+          });
+        })
+        .catch(err => console.error('Error fetching refunds:', err));
+    }
+
+    function updateRefundStatus(id, status) {
+      fetchFromBackend(`/api/refunds/${id}/process`, {
+        method: 'POST',
+        body: JSON.stringify({ status })
+      })
+      .then(data => {
+        alert(data.message || `Refund status updated successfully.`);
+        renderRefundsList();
+      })
+      .catch(err => alert('Error processing refund: ' + err.message));
     }
 
     function handleLogout() {

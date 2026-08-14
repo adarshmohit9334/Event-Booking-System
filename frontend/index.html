@@ -637,7 +637,16 @@
         headers
       }).then(res => {
         if (!res.ok) {
-          return res.json().then(err => { throw new Error(err.message || 'API request failed') });
+          return res.text().then(text => {
+            let errMsg = 'API request failed';
+            try {
+              const errJson = JSON.parse(text);
+              errMsg = errJson.message || errMsg;
+            } catch(e) {
+              errMsg = text || res.statusText || errMsg;
+            }
+            throw new Error(errMsg);
+          });
         }
         return res.json();
       });
