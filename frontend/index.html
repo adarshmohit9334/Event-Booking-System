@@ -237,6 +237,25 @@
       border-top: 2px dashed rgba(255, 255, 255, 0.15);
       transform: translateY(11px);
     }
+
+    .btn-payment-mode {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      padding: 0.6rem 1.2rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .btn-payment-mode.active,
+    .btn-payment-mode:hover {
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.25);
+    }
   </style>
 </head>
 
@@ -398,32 +417,73 @@
                 </div>
               </div>
 
-              <div class="mb-3">
-                <label class="form-label text-secondary fs-8 fw-semibold">Cardholder Name</label>
-                <input type="text" required class="form-control bg-dark border-secondary text-white"
-                  placeholder="John Doe">
-              </div>
-
-              <div class="mb-3">
-                <label class="form-label text-secondary fs-8 fw-semibold">Credit Card Number</label>
-                <div class="input-group">
-                  <span class="input-group-text bg-dark border-secondary text-secondary"><i
-                      class="fa-regular fa-credit-card"></i></span>
-                  <input type="text" required class="form-control bg-dark border-secondary text-white"
-                    placeholder="4000 1234 5678 9010" maxlength="19">
+              <!-- Payment Mode Selector -->
+              <div class="mb-4">
+                <label class="form-label text-secondary fs-8 fw-semibold d-block mb-2">Select Payment Method</label>
+                <div class="d-flex gap-2">
+                  <button type="button" id="btnPayCard" class="btn btn-payment-mode flex-grow-1 active" onclick="togglePaymentMode('card')">
+                    <i class="fa-regular fa-credit-card me-2"></i>Credit / Debit Card
+                  </button>
+                  <button type="button" id="btnPayUPI" class="btn btn-payment-mode flex-grow-1" onclick="togglePaymentMode('upi')">
+                    <i class="fa-solid fa-mobile-screen-button me-2"></i>UPI / QR Code
+                  </button>
                 </div>
               </div>
 
-              <div class="row">
-                <div class="col-6 mb-3">
-                  <label class="form-label text-secondary fs-8 fw-semibold">Expiry Date</label>
-                  <input type="text" required class="form-control bg-dark border-secondary text-white"
-                    placeholder="MM/YY" maxlength="5">
+              <!-- Card Payment Fields -->
+              <div id="cardPaymentFields">
+                <div class="mb-3">
+                  <label class="form-label text-secondary fs-8 fw-semibold">Cardholder Name</label>
+                  <input type="text" id="cardName" required class="form-control bg-dark border-secondary text-white"
+                    placeholder="John Doe">
                 </div>
-                <div class="col-6 mb-3">
-                  <label class="form-label text-secondary fs-8 fw-semibold">CVV Code</label>
-                  <input type="password" required class="form-control bg-dark border-secondary text-white"
-                    placeholder="***" maxlength="3">
+
+                <div class="mb-3">
+                  <label class="form-label text-secondary fs-8 fw-semibold">Credit Card Number</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-secondary"><i
+                        class="fa-regular fa-credit-card"></i></span>
+                    <input type="text" id="cardNumber" required class="form-control bg-dark border-secondary text-white"
+                      placeholder="4000 1234 5678 9010" maxlength="19">
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-6 mb-3">
+                    <label class="form-label text-secondary fs-8 fw-semibold">Expiry Date</label>
+                    <input type="text" id="cardExpiry" required class="form-control bg-dark border-secondary text-white"
+                      placeholder="MM/YY" maxlength="5">
+                  </div>
+                  <div class="col-6 mb-3">
+                    <label class="form-label text-secondary fs-8 fw-semibold">CVV Code</label>
+                    <input type="password" id="cardCvv" required class="form-control bg-dark border-secondary text-white"
+                      placeholder="***" maxlength="3">
+                  </div>
+                </div>
+              </div>
+
+              <!-- UPI Payment Fields -->
+              <div id="upiPaymentFields" class="d-none">
+                <div class="text-center p-3 mb-3 glass-panel" style="background: rgba(255, 255, 255, 0.02); border-radius: 12px;">
+                  <p class="text-secondary small mb-2">Scan QR Code using any UPI App</p>
+                  <div class="d-inline-block p-2 bg-white rounded mb-2">
+                    <img id="upiQRCodeImg" src="" alt="UPI QR Code" style="width: 150px; height: 150px; display: block;">
+                  </div>
+                  <p class="mb-0 text-secondary" style="font-size: 0.8rem;">
+                    <i class="fa-solid fa-arrows-rotate fa-spin text-primary me-1"></i> Waiting for verification...
+                  </p>
+                </div>
+
+                <div class="text-center text-muted my-2" style="font-size: 0.75rem;">OR PAY VIA UPI ID</div>
+
+                <div class="mb-3">
+                  <label class="form-label text-secondary fs-8 fw-semibold">UPI ID / VPA</label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-secondary"><i class="fa-solid fa-at"></i></span>
+                    <input type="text" id="upiIdInput" class="form-control bg-dark border-secondary text-white"
+                      placeholder="username@bank">
+                  </div>
+                  <div class="form-text text-secondary" style="font-size: 0.72rem;">Example: name@okaxis, mobileNumber@paytm</div>
                 </div>
               </div>
 
@@ -802,6 +862,8 @@
       document.getElementById('btnGoToPayment').disabled = selectedSeats.length === 0;
     }
 
+    let currentPaymentMode = 'card';
+
     function goToPaymentStep() {
       const totalPrice = selectedSeats.reduce((sum, id) => sum + activeEvent.prices[activeEvent.seats[id].type], 0);
       document.getElementById('paymentSeatsLabel').textContent = selectedSeats.join(', ');
@@ -809,6 +871,46 @@
 
       document.getElementById('bookingStep1').classList.add('d-none');
       document.getElementById('bookingStep2').classList.remove('d-none');
+      
+      togglePaymentMode('card');
+    }
+
+    function togglePaymentMode(mode) {
+      currentPaymentMode = mode;
+      const cardBtn = document.getElementById('btnPayCard');
+      const upiBtn = document.getElementById('btnPayUPI');
+      const cardFields = document.getElementById('cardPaymentFields');
+      const upiFields = document.getElementById('upiPaymentFields');
+      
+      const cardInputs = cardFields.querySelectorAll('input');
+      const upiInputs = upiFields.querySelectorAll('input');
+      
+      if (mode === 'card') {
+        cardBtn.classList.add('active');
+        upiBtn.classList.remove('active');
+        cardFields.classList.remove('d-none');
+        upiFields.classList.add('d-none');
+        
+        cardInputs.forEach(input => input.setAttribute('required', 'true'));
+        upiInputs.forEach(input => input.removeAttribute('required'));
+      } else {
+        cardBtn.classList.remove('active');
+        upiBtn.classList.add('active');
+        cardFields.classList.add('d-none');
+        upiFields.classList.remove('d-none');
+        
+        cardInputs.forEach(input => input.removeAttribute('required'));
+        upiInputs.forEach(input => input.setAttribute('required', 'true'));
+        
+        generateUPIQR();
+      }
+    }
+
+    function generateUPIQR() {
+      const totalPrice = selectedSeats.reduce((sum, id) => sum + activeEvent.prices[activeEvent.seats[id].type], 0);
+      const upiUrl = `upi://pay?pa=eventify@bank&pn=Eventify%20Ticketing&am=${totalPrice}&cu=INR&tn=Seats%20${selectedSeats.join('%20')}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(upiUrl)}&color=0a0b10&bgcolor=ffffff`;
+      document.getElementById('upiQRCodeImg').src = qrUrl;
     }
 
     function backToSeatsStep() {
@@ -819,6 +921,15 @@
     // Process payment and finalize
     function processBooking(event) {
       event.preventDefault();
+
+      if (currentPaymentMode === 'upi') {
+        const upiId = document.getElementById('upiIdInput').value.trim();
+        const upiRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/;
+        if (!upiRegex.test(upiId)) {
+          alert("Please enter a valid UPI ID (e.g., username@bank)");
+          return;
+        }
+      }
 
       // Reserve seats
       events = events.map(evt => {
