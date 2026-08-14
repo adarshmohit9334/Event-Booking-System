@@ -5,9 +5,11 @@ import com.enterprise.etbs.dto.request.VerifyPaymentRequest;
 import com.enterprise.etbs.entity.Booking;
 import com.enterprise.etbs.entity.Event;
 import com.enterprise.etbs.entity.Seat;
+import com.enterprise.etbs.entity.Refund;
 import com.enterprise.etbs.repository.BookingRepository;
 import com.enterprise.etbs.repository.EventRepository;
 import com.enterprise.etbs.repository.SeatRepository;
+import com.enterprise.etbs.repository.RefundRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import org.json.JSONObject;
@@ -33,6 +35,9 @@ public class BookingController {
 
     @Autowired
     private SeatRepository seatRepository;
+
+    @Autowired
+    private RefundRepository refundRepository;
 
     @Value("${app.razorpay.key-id}")
     private String razorpayKeyId;
@@ -188,6 +193,17 @@ public class BookingController {
 
         booking.setStatus("cancelled");
         bookingRepository.save(booking);
+
+        // Generate refund log
+        Refund refund = Refund.builder()
+                .id("rfd-" + System.currentTimeMillis())
+                .bookingId(booking.getId())
+                .reason("Customer initiated cancellation")
+                .amount(booking.getTotalPrice())
+                .requestedAt(LocalDateTime.now())
+                .status("pending")
+                .build();
+        refundRepository.save(refund);
 
         return ResponseEntity.ok(Map.of("message", "Booking cancelled successfully. Refund initiated."));
     }
