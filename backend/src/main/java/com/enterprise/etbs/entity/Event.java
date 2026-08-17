@@ -23,9 +23,11 @@ public class Event {
     private Double priceGold;
     private Double priceStandard;
 
+    private String organizerEmail;
+
     public Event() {}
 
-    public Event(String id, String title, String description, String date, String time, String location, String category, String image, Double priceVIP, Double priceGold, Double priceStandard) {
+    public Event(String id, String title, String description, String date, String time, String location, String category, String image, Double priceVIP, Double priceGold, Double priceStandard, String organizerEmail) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -37,7 +39,11 @@ public class Event {
         this.priceVIP = priceVIP;
         this.priceGold = priceGold;
         this.priceStandard = priceStandard;
+        this.organizerEmail = organizerEmail;
     }
+
+    public String getOrganizerEmail() { return organizerEmail; }
+    public void setOrganizerEmail(String organizerEmail) { this.organizerEmail = organizerEmail; }
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -89,6 +95,8 @@ public class Event {
         private Double priceGold;
         private Double priceStandard;
 
+        private String organizerEmail;
+
         public EventBuilder id(String id) { this.id = id; return this; }
         public EventBuilder title(String title) { this.title = title; return this; }
         public EventBuilder description(String description) { this.description = description; return this; }
@@ -100,9 +108,10 @@ public class Event {
         public EventBuilder priceVIP(Double priceVIP) { this.priceVIP = priceVIP; return this; }
         public EventBuilder priceGold(Double priceGold) { this.priceGold = priceGold; return this; }
         public EventBuilder priceStandard(Double priceStandard) { this.priceStandard = priceStandard; return this; }
+        public EventBuilder organizerEmail(String organizerEmail) { this.organizerEmail = organizerEmail; return this; }
 
         public Event build() {
-            return new Event(id, title, description, date, time, location, category, image, priceVIP, priceGold, priceStandard);
+            return new Event(id, title, description, date, time, location, category, image, priceVIP, priceGold, priceStandard, organizerEmail);
         }
     }
 }

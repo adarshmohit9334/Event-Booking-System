@@ -10,6 +10,7 @@ import com.enterprise.etbs.repository.BookingRepository;
 import com.enterprise.etbs.repository.EventRepository;
 import com.enterprise.etbs.repository.SeatRepository;
 import com.enterprise.etbs.repository.RefundRepository;
+import com.enterprise.etbs.service.EmailService;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import org.json.JSONObject;
@@ -38,6 +39,9 @@ public class BookingController {
 
     @Autowired
     private RefundRepository refundRepository;
+
+    @Autowired
+    private EmailService emailService;
 
     @Value("${app.razorpay.key-id}")
     private String razorpayKeyId;
@@ -145,7 +149,21 @@ public class BookingController {
         booking.setStatus("confirmed");
         bookingRepository.save(booking);
 
+        // Trigger email receipt delivery asynchronously
+        try {
+            emailService.sendBookingConfirmation(booking);
+        } catch (Exception e) {
+            System.err.println("Failed to trigger email receipt: " + e.getMessage());
+        }
+
         return ResponseEntity.ok(Map.of("message", "Payment verified and tickets issued successfully!", "booking", booking));
+    }
+
+    @GetMapping("/public/{id}")
+    public ResponseEntity<?> getPublicBookingDetails(@PathVariable String id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Booking not found"));
+        return ResponseEntity.ok(booking);
     }
 
     @GetMapping("/my-tickets")

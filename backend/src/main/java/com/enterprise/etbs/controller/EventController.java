@@ -2,8 +2,10 @@ package com.enterprise.etbs.controller;
 
 import com.enterprise.etbs.entity.Event;
 import com.enterprise.etbs.entity.Seat;
+import com.enterprise.etbs.entity.Booking;
 import com.enterprise.etbs.repository.EventRepository;
 import com.enterprise.etbs.repository.SeatRepository;
+import com.enterprise.etbs.repository.BookingRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,9 @@ public class EventController {
 
     @Autowired
     private SeatRepository seatRepository;
+
+    @Autowired
+    private BookingRepository bookingRepository;
 
     @PostConstruct
     public void seedDefaultEvents() {
@@ -85,7 +90,6 @@ public class EventController {
             System.out.println("Default events seeded.");
 
             // Seed seats for each event
-            Random random = new Random();
             List<String> rows = List.of("A", "B", "C", "D", "E", "F");
 
             for (Event event : defaultEvents) {
@@ -98,14 +102,13 @@ public class EventController {
 
                     for (int col = 1; col <= 10; col++) {
                         String seatNumber = row + col;
-                        boolean isBooked = random.nextDouble() < 0.25;
                         seats.add(Seat.builder()
                                 .id(event.getId() + "_" + seatNumber)
                                 .eventId(event.getId())
                                 .seatNumber(seatNumber)
                                 .rowLabel(row)
                                 .type(type)
-                                .status(isBooked ? "booked" : "available")
+                                .status("available")
                                 .build());
                     }
                 }
@@ -113,6 +116,40 @@ public class EventController {
             }
             System.out.println("Default seats generated and seeded.");
         }
+
+        // Clean up orphaned/randomly booked seats that do not have matching bookings
+        List<Seat> allSeats = seatRepository.findAll();
+        List<Booking> allConfirmedBookings = bookingRepository.findAll().stream()
+                .filter(b -> "confirmed".equals(b.getStatus()))
+                .toList();
+
+        Set<String> activeBookedSeatKeys = new HashSet<>();
+        for (Booking b : allConfirmedBookings) {
+            String[] seatNums = b.getSeats().split(", ");
+            for (String sNum : seatNums) {
+                activeBookedSeatKeys.add(b.getEventId() + "_" + sNum.trim());
+            }
+        }
+
+        List<Seat> seatsToReset = new ArrayList<>();
+        for (Seat seat : allSeats) {
+            if ("booked".equals(seat.getStatus()) && !activeBookedSeatKeys.contains(seat.getId())) {
+                seat.setStatus("available");
+                seatsToReset.add(seat);
+            }
+        }
+        if (!seatsToReset.isEmpty()) {
+            seatRepository.saveAll(seatsToReset);
+            System.out.println("Cleaned up " + seatsToReset.size() + " orphaned/randomly booked seats.");
+        }
+    }
+
+    @GetMapping("/test/seats-count")
+    public ResponseEntity<?> getSeatsCount() {
+        return ResponseEntity.ok(Map.of(
+            "seatsCount", seatRepository.count(),
+            "eventsCount", eventRepository.count()
+        ));
     }
 
     @GetMapping
